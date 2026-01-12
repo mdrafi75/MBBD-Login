@@ -1,17 +1,35 @@
 // ==================== VS Code-এ টেস্ট করার জন্য সম্পূর্ণ কোড ====================
 const express = require('express');
-//const mongoose = require('mongoose');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const path = require('path');
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'movie-bazar-secret-key-vscode-test';
+const JWT_SECRET = process.env.JWT_SECRET || 'movie-bazar-secret-key';
+
+// ✅ CORS Middleware (এটাই আসল সমস্যা)
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+    ? process.env.ALLOWED_ORIGINS.split(',') 
+    : ['https://mbbd2.blogspot.com', 'http://localhost:5500'];
+
+app.use(cors({
+    origin: function (origin, callback) {
+        // Allow requests with no origin
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            console.log('❌ Blocked by CORS:', origin);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true
+}));
 
 app.use(express.json());
-app.use(express.static('public'));
 
 // ✅ ইন-মেমোরি ডাটাবেস (VS Code টেস্টের জন্য)
 // MongoDB না থাকলেও কাজ করবে
@@ -469,4 +487,5 @@ app.get('/test-ui', (req, res) => {
 app.listen(PORT, () => {
   console.log(`✅ Movie Bazar API running on http://localhost:${PORT}`);
   console.log(`📡 Test UI: http://localhost:${PORT}/test-ui`);
+
 });
