@@ -482,10 +482,21 @@ app.get('/test-ui', (req, res) => {
     </html>
   `);
 });
+// ✅ CORS Pre-Flight Requests
+app.options('*', cors());
 
+// ✅ সরাসরি Render রুট
+app.get('/', (req, res) => {
+    res.json({
+        service: 'Movie Bazar Login API',
+        status: '✅ Live',
+        cors: 'Enabled for: ' + (process.env.ALLOWED_ORIGINS || 'mbbd2.blogspot.com')
+    });
+});
 // ==================== সার্ভার শুরু ====================
 app.listen(PORT, () => {
   console.log(`✅ Movie Bazar API running on http://localhost:${PORT}`);
   console.log(`📡 Test UI: http://localhost:${PORT}/test-ui`);
 
 });
+
