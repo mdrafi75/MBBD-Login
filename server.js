@@ -500,3 +500,29 @@ app.listen(PORT, () => {
 
 });
 
+// ✅ Username check with suggestions
+app.get('/api/check-username/:username', (req, res) => {
+    const { username } = req.params;
+    const existingUser = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+    
+    if (existingUser) {
+        // Generate suggestions
+        const suggestions = [
+            `${username}${Math.floor(Math.random() * 90 + 10)}`,
+            `${username}_${new Date().getFullYear()}`,
+            `The${username.charAt(0).toUpperCase() + username.slice(1)}`,
+            `${username}Official`
+        ];
+        
+        res.json({ 
+            available: false, 
+            message: `Username "${username}" is already taken`,
+            suggestions: suggestions
+        });
+    } else {
+        res.json({ 
+            available: true, 
+            message: `Username "${username}" is available`
+        });
+    }
+});
