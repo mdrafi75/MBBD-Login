@@ -121,6 +121,8 @@ app.post('/api/signup', async (req, res) => {
 
 // 3. লগইন
 app.post('/api/login', async (req, res) => {
+    console.log('🔐 /api/login endpoint HIT!', req.body); // <-- এই লাইন যোগ করুন
+    console.log('📦 Users array length:', users.length);  // <-- এই লাইন যোগ করুন
   try {
     const { email, password } = req.body;
     
@@ -698,3 +700,4 @@ app.listen(PORT, () => {
   console.log(`📡 Test UI: http://localhost:${PORT}/test-ui`);
 
 });
+
