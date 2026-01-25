@@ -31,37 +31,6 @@ app.use(cors({
 
 app.use(express.json());
 
-// ✅ ইন-মেমোরি ডাটাবেস (VS Code টেস্টের জন্য)
-// MongoDB না থাকলেও কাজ করবে
-let users = [];
-let avatarsDB = [
-  { id: 'avatar1', url: 'https://i.gifer.com/embedded/download/7VE.gif', level: 1, name: 'সিনেমা প্রেমী', unlocked: true },
-  { id: 'avatar2', url: 'https://i.gifer.com/embedded/download/XOsX.gif', level: 1, name: 'পপকর্ন লোভী', unlocked: true },
-  { id: 'avatar3', url: 'https://i.gifer.com/embedded/download/76YS.gif', level: 1, name: 'ফিল্ম ফ্যান', unlocked: true },
-  { id: 'avatar4', url: 'https://i.gifer.com/embedded/download/7Kn6.gif', level: 2, name: 'মুভি এক্সপ্লোরার', unlocked: false },
-  { id: 'avatar5', url: 'https://i.gifer.com/embedded/download/3T6c.gif', level: 2, name: 'হলিউড হিরো', unlocked: false },
-  { id: 'avatar6', url: 'https://i.gifer.com/embedded/download/2GU.gif', level: 3, name: 'সিনেপিল', unlocked: false },
-  { id: 'avatar7', url: 'https://i.gifer.com/embedded/download/3T7d.gif', level: 3, name: 'বলিউড স্টার', unlocked: false },
-  { id: 'avatar8', url: 'https://i.gifer.com/embedded/download/4N0w.gif', level: 4, name: 'মুভি মাস্টার', unlocked: false },
-  { id: 'avatar9', url: 'https://i.gifer.com/embedded/download/3T7e.gif', level: 5, name: 'সিনেমা কিং', unlocked: false }
-];
-
-// ✅ টেস্ট ইউজার (VS Code-এ চেক করার জন্য)
-users.push({
-  id: 'test123',
-  username: 'testuser',
-  email: 'test@example.com',
-  password: bcrypt.hashSync('password123', 10),
-  avatar: 'https://i.gifer.com/embedded/download/7VE.gif',
-  level: 1,
-  points: 50,
-  badges: ['🎬 Movie Explorer'],
-  unlockedAvatars: ['avatar1', 'avatar2', 'avatar3'],
-  favorites: [],
-  downloadHistory: [],
-  createdAt: new Date()
-});
-
 // ==================== API ENDPOINTS ====================
 
 // 1. হেলথ চেক
@@ -381,107 +350,337 @@ app.post('/api/favorite', (req, res) => {
   }
 });
 
-// ==================== VS Code টেস্ট UI সার্ভ ====================
-app.get('/test-ui', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Movie Bazar - Login System Test</title>
-      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-      <style>
-        body { background: linear-gradient(135deg, #0f0c29, #302b63); color: white; }
-        .test-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        .api-box { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; margin: 10px; }
-        .btn-test { margin: 5px; }
-        .avatar-gif { width: 80px; height: 80px; border-radius: 50%; border: 3px solid #e94560; }
-      </style>
-    </head>
-    <body>
-      <div class="test-container">
-        <h1 class="text-center mb-4">🎬 Movie Bazar Login System Test</h1>
-        <div class="row">
-          <div class="col-md-4">
-            <div class="api-box">
-              <h4>📡 API Health Check</h4>
-              <button class="btn btn-success btn-test" onclick="testHealth()">Test API</button>
-              <div id="health-result"></div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="api-box">
-              <h4>📝 Signup Test</h4>
-              <input class="form-control mb-2" id="signup-username" placeholder="Username">
-              <input class="form-control mb-2" id="signup-email" placeholder="Email">
-              <input class="form-control mb-2" id="signup-password" placeholder="Password">
-              <button class="btn btn-primary btn-test" onclick="testSignup()">Signup</button>
-              <div id="signup-result"></div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="api-box">
-              <h4>🔐 Login Test</h4>
-              <input class="form-control mb-2" id="login-email" placeholder="Email" value="test@example.com">
-              <input class="form-control mb-2" id="login-password" placeholder="Password" value="password123">
-              <button class="btn btn-warning btn-test" onclick="testLogin()">Login</button>
-              <div id="login-result"></div>
-            </div>
-          </div>
-        </div>
-        <div class="mt-4">
-          <h4>API Base URL:</h4>
-          <code>http://localhost:3000</code>
-        </div>
-      </div>
-      
-      <script>
-        const API_BASE = 'http://localhost:3000';
-        
-        async function testHealth() {
-          const res = await fetch(API_BASE + '/api/health');
-          const data = await res.json();
-          document.getElementById('health-result').innerHTML = 
-            '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+// 👇 এই কোডগুলো আপনার server.js ফাইলে যোগ করবেন
+
+// ==================== পয়েন্ট সিস্টেম ডাটাবেস ====================
+let userActivities = {}; // ইন-মেমোরি স্টোরেজ
+
+// ==================== ইউজার অ্যাক্টিভিটি মডেল ====================
+function initUserActivity(userId) {
+    if (!userActivities[userId]) {
+        userActivities[userId] = {
+            dailyLogin: { lastDate: null, streak: 0 },
+            movieViews: [],
+            reactions: [],
+            comments: [],
+            shares: [],
+            lastActivity: Date.now(),
+            totalPoints: 0
+        };
+    }
+    return userActivities[userId];
+}
+
+// ==================== ডেইলি লগইন চেক ====================
+function checkDailyLogin(userId) {
+    const activity = initUserActivity(userId);
+    const today = new Date().toDateString();
+    
+    if (activity.dailyLogin.lastDate !== today) {
+        // স্ট্রিক চেক
+        const yesterday = new Date(Date.now() - 86400000).toDateString();
+        if (activity.dailyLogin.lastDate === yesterday) {
+            activity.dailyLogin.streak++;
+        } else {
+            activity.dailyLogin.streak = 1;
         }
         
-        async function testSignup() {
-          const username = document.getElementById('signup-username').value;
-          const email = document.getElementById('signup-email').value;
-          const password = document.getElementById('signup-password').value;
-          
-          const res = await fetch(API_BASE + '/api/signup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, email, password })
-          });
-          
-          const data = await res.json();
-          document.getElementById('signup-result').innerHTML = 
-            '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
-        }
+        activity.dailyLogin.lastDate = today;
         
-        async function testLogin() {
-          const email = document.getElementById('login-email').value;
-          const password = document.getElementById('login-password').value;
-          
-          const res = await fetch(API_BASE + '/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-          });
-          
-          const data = await res.json();
-          document.getElementById('login-result').innerHTML = 
-            '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+        // পয়েন্ট ক্যালকুলেশন
+        let points = 1;
+        if (activity.dailyLogin.streak >= 3) points = 3;
+        if (activity.dailyLogin.streak >= 7) points = 7;
+        if (activity.dailyLogin.streak >= 30) points = 30;
+        
+        return { earned: points, streak: activity.dailyLogin.streak };
+    }
+    return { earned: 0, streak: activity.dailyLogin.streak };
+}
+
+// ==================== নতুন API endpoints যোগ করুন ====================
+
+// API 1: ইউজার প্রোফাইল পয়েন্ট ডাটা
+app.get('/api/user/:id/points', (req, res) => {
+    const user = users.find(u => u.id === req.params.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const activity = initUserActivity(user.id);
+    const loginBonus = checkDailyLogin(user.id);
+    
+    // টাইটেল ক্যালকুলেশন
+    const titles = [
+        { min: 0, max: 50, title: '🎬 মুভি নিউবি' },
+        { min: 51, max: 150, title: '🎥 ফিল্ম ফ্যান' },
+        { min: 151, max: 300, title: '🎞️ সিনেপিল' },
+        { min: 301, max: 500, title: '⭐ স্টার ভিউয়ার' },
+        { min: 501, max: 750, title: '🌟 প্রিমিয়াম ফ্যান' },
+        { min: 751, max: 1000, title: '👑 সিনেমা কিং' },
+        { min: 1001, max: 1500, title: '🏆 এলিট ভিউয়ার' },
+        { min: 1501, max: 2000, title: '💎 লিজেন্ডারি' }
+    ];
+    
+    const currentTitle = titles.find(t => user.points >= t.min && user.points <= t.max)?.title || titles[0].title;
+    
+    res.json({
+        points: user.points,
+        title: currentTitle,
+        dailyStreak: loginBonus.streak,
+        nextTitle: titles.find(t => user.points < t.max)?.title,
+        pointsNeeded: (titles.find(t => user.points < t.max)?.min || 0) - user.points,
+        activities: {
+            views: activity.movieViews.length,
+            reactions: activity.reactions.length,
+            comments: activity.comments.length,
+            shares: activity.shares.length
         }
-      </script>
-    </body>
-    </html>
-  `);
+    });
 });
+
+// API 2: মুভি ভিউ ট্র্যাক
+app.post('/api/activity/view', (req, res) => {
+    const { userId, movieId, movieTitle } = req.body;
+    const user = users.find(u => u.id === userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const activity = initUserActivity(userId);
+    const today = new Date().toDateString();
+    
+    // ডেইলি লিমিট চেক (৫ ভিউ/দিন)
+    const todayViews = activity.movieViews.filter(v => v.date === today);
+    if (todayViews.length >= 5) {
+        return res.json({ 
+            success: false, 
+            message: 'Daily view limit reached',
+            points: 0 
+        });
+    }
+    
+    // নতুন ভিউ যোগ
+    activity.movieViews.push({
+        movieId,
+        movieTitle,
+        date: today,
+        timestamp: Date.now()
+    });
+    
+    // পয়েন্ট যোগ
+    user.points += 1;
+    activity.totalPoints += 1;
+    
+    res.json({
+        success: true,
+        pointsEarned: 1,
+        totalPoints: user.points,
+        dailyViews: todayViews.length + 1,
+        viewsLeft: 5 - (todayViews.length + 1)
+    });
+});
+
+// API 3: রিঅ্যাক্ট ট্র্যাক
+app.post('/api/activity/react', (req, res) => {
+    const { userId, movieId, movieTitle, reactionType } = req.body;
+    const user = users.find(u => u.id === userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const activity = initUserActivity(userId);
+    
+    // একই মুভিতে একাধিক রিঅ্যাক্ট চেক
+    const existingReact = activity.reactions.find(r => r.movieId === movieId);
+    if (existingReact) {
+        return res.json({
+            success: false,
+            message: 'Already reacted to this movie',
+            points: 0
+        });
+    }
+    
+    // রিঅ্যাক্ট পয়েন্ট ম্যাপ
+    const reactionPoints = {
+        'like': 2,
+        'fire': 3,
+        'wow': 4,
+        'masterpiece': 5
+    };
+    
+    const points = reactionPoints[reactionType] || 2;
+    
+    // নতুন রিঅ্যাক্ট যোগ
+    activity.reactions.push({
+        movieId,
+        movieTitle,
+        reactionType,
+        date: new Date().toDateString(),
+        timestamp: Date.now(),
+        pointsEarned: points
+    });
+    
+    // পয়েন্ট যোগ
+    user.points += points;
+    activity.totalPoints += points;
+    
+    res.json({
+        success: true,
+        pointsEarned: points,
+        totalPoints: user.points,
+        reactionType,
+        reactionCount: activity.reactions.length
+    });
+});
+
+// API 4: কমেন্ট ট্র্যাক
+app.post('/api/activity/comment', (req, res) => {
+    const { userId, movieId, movieTitle, comment, wordCount } = req.body;
+    const user = users.find(u => u.id === userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const activity = initUserActivity(userId);
+    
+    // কমেন্ট পয়েন্ট ক্যালকুলেশন
+    let points = 1; // বেসিক কমেন্ট
+    if (wordCount >= 50) points = 3;
+    
+    // রেটিং থাকলে অতিরিক্ত পয়েন্ট
+    if (comment.includes('⭐') || comment.match(/\d+\/10/) || comment.match(/\d+\/5/)) {
+        points += 2;
+    }
+    
+    // নতুন কমেন্ট যোগ
+    const newComment = {
+        id: Date.now().toString(),
+        movieId,
+        movieTitle,
+        comment,
+        wordCount,
+        date: new Date().toDateString(),
+        timestamp: Date.now(),
+        pointsEarned: points,
+        likes: 0
+    };
+    
+    activity.comments.push(newComment);
+    
+    // পয়েন্ট যোগ
+    user.points += points;
+    activity.totalPoints += points;
+    
+    res.json({
+        success: true,
+        pointsEarned: points,
+        totalPoints: user.points,
+        commentId: newComment.id,
+        comment: newComment
+    });
+});
+
+// API 5: শেয়ার ট্র্যাক
+app.post('/api/activity/share', (req, res) => {
+    const { userId, movieId, movieTitle, platform } = req.body;
+    const user = users.find(u => u.id === userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const activity = initUserActivity(userId);
+    const today = new Date().toDateString();
+    
+    // প্ল্যাটফর্ম পয়েন্ট ম্যাপ
+    const platformPoints = {
+        'whatsapp': 3,
+        'facebook': 4,
+        'telegram': 5,
+        'link': 2
+    };
+    
+    const points = platformPoints[platform] || 2;
+    
+    // নতুন শেয়ার যোগ
+    activity.shares.push({
+        movieId,
+        movieTitle,
+        platform,
+        date: today,
+        timestamp: Date.now(),
+        pointsEarned: points
+    });
+    
+    // পয়েন্ট যোগ
+    user.points += points;
+    activity.totalPoints += points;
+    
+    res.json({
+        success: true,
+        pointsEarned: points,
+        totalPoints: user.points,
+        platform,
+        shareCount: activity.shares.length
+    });
+});
+
+// API 6: লিডারবোর্ড
+app.get('/api/leaderboard', (req, res) => {
+    const topUsers = users
+        .sort((a, b) => (b.points || 0) - (a.points || 0))
+        .slice(0, 10)
+        .map(user => ({
+            username: user.username,
+            points: user.points || 0,
+            level: user.level || 1,
+            avatar: user.avatar
+        }));
+    
+    res.json({
+        success: true,
+        leaderboard: topUsers,
+        updated: new Date().toISOString()
+    });
+});
+
+// ==================== ডাটা পারসিসটেন্স ====================
+
+// মেমোরি ডাটা সেভ (আপনি পরবর্তীতে MongoDB/Redis যোগ করবেন)
+const fs = require('fs');
+const DATA_FILE = './user-data.json';
+
+// ডাটা লোড
+function loadPersistentData() {
+    try {
+        if (fs.existsSync(DATA_FILE)) {
+            const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+            users = data.users || [];
+            userActivities = data.activities || {};
+            console.log(`📂 Loaded ${users.length} users and ${Object.keys(userActivities).length} activities`);
+        }
+    } catch (error) {
+        console.error('Data load error:', error);
+    }
+}
+
+// ডাটা সেভ
+function savePersistentData() {
+    try {
+        const data = {
+            users,
+            activities: userActivities,
+            lastSave: new Date().toISOString()
+        };
+        fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+        console.log('💾 Data saved successfully');
+    } catch (error) {
+        console.error('Data save error:', error);
+    }
+}
+
+// ৫ মিনিট পরপর অটো সেভ
+setInterval(savePersistentData, 5 * 60 * 1000);
+
+// সার্ভার শুরুতে ডাটা লোড
+loadPersistentData();
+
+// API কল হলে ডাটা সেভ
+function autoSaveAfterAPI() {
+    setTimeout(savePersistentData, 1000);
+}
+
+
 // ✅ CORS Pre-Flight Requests
 app.options('*', cors());
 
@@ -498,31 +697,4 @@ app.listen(PORT, () => {
   console.log(`✅ Movie Bazar API running on http://localhost:${PORT}`);
   console.log(`📡 Test UI: http://localhost:${PORT}/test-ui`);
 
-});
-
-// ✅ Username check with suggestions
-app.get('/api/check-username/:username', (req, res) => {
-    const { username } = req.params;
-    const existingUser = users.find(u => u.username.toLowerCase() === username.toLowerCase());
-    
-    if (existingUser) {
-        // Generate suggestions
-        const suggestions = [
-            `${username}${Math.floor(Math.random() * 90 + 10)}`,
-            `${username}_${new Date().getFullYear()}`,
-            `The${username.charAt(0).toUpperCase() + username.slice(1)}`,
-            `${username}Official`
-        ];
-        
-        res.json({ 
-            available: false, 
-            message: `Username "${username}" is already taken`,
-            suggestions: suggestions
-        });
-    } else {
-        res.json({ 
-            available: true, 
-            message: `Username "${username}" is available`
-        });
-    }
 });
