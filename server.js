@@ -203,16 +203,17 @@ app.post('/api/signup', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
         
         // Create new user
+        // ✅ নতুন কোড (পুরানো কোডের জায়গায় এটা বসান):
         const newUser = {
             id: Date.now().toString(),
             username,
             email,
             password: hashedPassword,
-            avatar: avatarsDB[0].url,
+            avatar: levels[0].avatars[0], // ✅ levels ব্যবহার করুন
             level: 1,
             points: 0,
             badges: ['🎬 Movie Explorer'],
-            unlockedAvatars: ['avatar1'],
+            unlockedAvatars: levels[0].avatars, // ✅ levels ব্যবহার করুন
             favorites: [],
             downloadHistory: [],
             createdAt: new Date().toISOString()
@@ -451,4 +452,5 @@ app.listen(PORT, () => {
     console.log(`🌐 Health check: http://localhost:${PORT}/api/health`);
     console.log(`📡 Test URL: http://localhost:${PORT}/`);
 });
+
 
