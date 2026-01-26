@@ -209,11 +209,16 @@ app.post('/api/signup', async (req, res) => {
             username,
             email,
             password: hashedPassword,
-            avatar: levels[0].avatars[0], // ✅ levels ব্যবহার করুন
+            // ✅ নতুন ফিল্ড যোগ করুন
+            firstName: '',
+            lastName: '', 
+            mobile: '',
+            // ✅ বাকি ফিল্ড
+            avatar: levels[0].avatars[0],
             level: 1,
             points: 0,
             badges: ['🎬 Movie Explorer'],
-            unlockedAvatars: levels[0].avatars, // ✅ levels ব্যবহার করুন
+            unlockedAvatars: levels[0].avatars,
             favorites: [],
             downloadHistory: [],
             createdAt: new Date().toISOString()
@@ -446,11 +451,52 @@ app.use((err, req, res, next) => {
     });
 });
 
+// ✅ প্রোফাইল আপডেট API
+app.put('/api/user/profile', (req, res) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        if (!token) throw new Error('No token');
+        
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const user = users.find(u => u.id === decoded.userId);
+        
+        if (!user) throw new Error('User not found');
+        
+        const { firstName, lastName, mobile } = req.body;
+        
+        // আপডেট করুন
+        if (firstName !== undefined) user.firstName = firstName;
+        if (lastName !== undefined) user.lastName = lastName;
+        if (mobile !== undefined) user.mobile = mobile;
+        
+        res.json({
+            success: true,
+            message: 'Profile updated successfully',
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                mobile: user.mobile,
+                avatar: user.avatar,
+                level: user.level,
+                points: user.points,
+                badges: user.badges
+            }
+        });
+        
+    } catch (error) {
+        res.status(401).json({ success: false, error: error.message });
+    }
+});
+
 // ==================== সার্ভার শুরু ====================
 app.listen(PORT, () => {
     console.log(`✅ Movie Bazar API running on port ${PORT}`);
     console.log(`🌐 Health check: http://localhost:${PORT}/api/health`);
     console.log(`📡 Test URL: http://localhost:${PORT}/`);
 });
+
 
 
