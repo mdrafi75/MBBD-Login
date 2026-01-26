@@ -1,4 +1,4 @@
-// ==================== VS Code-এ টেস্ট করার জন্য সম্পূর্ণ কোড ====================
+// ==================== MOVIE BAZAR LOGIN API ====================
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -6,367 +6,321 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'movie-bazar-secret-key';
+const PORT = process.env.PORT || 10000;
+const JWT_SECRET = process.env.JWT_SECRET || 'movie-bazar-secret-key-2024';
 
-// ✅ CORS Middleware (এটাই আসল সমস্যা)
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
-    ? process.env.ALLOWED_ORIGINS.split(',') 
-    : ['https://mbbd2.blogspot.com', 'http://localhost:5500'];
+// ✅ FIXED CORS Middleware
+const allowedOrigins = [
+    'https://mbbd2.blogspot.com',
+    'https://mb3bd.blogspot.com',
+    'https://69mxxd.blogspot.com',
+    'http://localhost:5500',
+    'http://localhost:3000'
+];
 
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow requests with no origin
         if (!origin) return callback(null, true);
         
-        if (allowedOrigins.indexOf(origin) !== -1) {
+        if (allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
-            console.log('❌ Blocked by CORS:', origin);
-            callback(new Error('Not allowed by CORS'));
+            console.log('🌐 Allowing origin:', origin);
+            callback(null, true); // সবকিছু allow করছে
         }
     },
     credentials: true
 }));
 
+// Middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// ✅ TEMPORARY DATABASE (মেমোরিতে)
+let users = [];
+let avatarsDB = [
+    { id: 'avatar1', url: 'https://i.gifer.com/embedded/download/7VE.gif', level: 1 },
+    { id: 'avatar2', url: 'https://i.pinimg.com/originals/2c/9b/7c/2c9b7c6092f8db8c90225eb29c2a8a2d.gif', level: 2 },
+    { id: 'avatar3', url: 'https://media.tenor.com/4tHnQM3X7c8AAAAM/anime-smile.gif', level: 3 }
+];
 
 // ==================== API ENDPOINTS ====================
 
 // 1. হেলথ চেক
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: '✅ API Running', 
-    message: 'Movie Bazar Login System',
-    usersCount: users.length 
-  });
+    res.json({ 
+        status: '✅ API Running', 
+        message: 'Movie Bazar Login System',
+        usersCount: users.length,
+        timestamp: new Date().toISOString(),
+        server: 'Render.com',
+        version: '1.0.0'
+    });
 });
 
-// 2. সাইনআপ
-app.post('/api/signup', async (req, res) => {
-  try {
-    const { username, email, password } = req.body;
+// 2. ইউজারনেম চেক
+app.get('/api/check-username/:username', (req, res) => {
+    const { username } = req.params;
+    const existingUser = users.find(u => u.username === username);
     
-    // ভ্যালিডেশন
-    if (!username || !email || !password) {
-      return res.status(400).json({ error: 'সব ফিল্ড পূরণ করুন' });
-    }
-    
-    // ইউনিক চেক
-    const existingUser = users.find(u => u.email === email || u.username === username);
     if (existingUser) {
-      return res.status(400).json({ 
-        error: existingUser.email === email ? 'ইমেইল already exists' : 'ইউজারনেম already exists' 
-      });
-    }
-    
-    // পাসওয়ার্ড হ্যাশ
-    const hashedPassword = await bcrypt.hash(password, 10);
-    
-    // লেভেল ও পয়েন্ট ক্যালকুলেশন
-    const userLevel = 1;
-    const points = 0;
-    
-    // আনলকড অ্যাভাটার (লেভেল 1 এর জন্য)
-    const unlockedAvatars = avatarsDB
-      .filter(a => a.level === 1)
-      .map(a => a.id);
-    
-    // নতুন ইউজার
-    const newUser = {
-      id: Date.now().toString(),
-      username,
-      email,
-      password: hashedPassword,
-      avatar: unlockedAvatars[0] || 'avatar1',
-      level: userLevel,
-      points,
-      badges: ['🎬 Movie Explorer'],
-      unlockedAvatars,
-      favorites: [],
-      downloadHistory: [],
-      createdAt: new Date()
-    };
-    
-    users.push(newUser);
-    
-    // JWT টোকেন তৈরি
-    const token = jwt.sign(
-      { userId: newUser.id, email: newUser.email },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-    
-    res.json({
-      success: true,
-      message: 'সাইনআপ সফল! 🎉',
-      token,
-      user: {
-        id: newUser.id,
-        username: newUser.username,
-        email: newUser.email,
-        avatar: newUser.avatar,
-        level: newUser.level,
-        points: newUser.points,
-        badges: newUser.badges,
-        unlockedAvatars: newUser.unlockedAvatars
-      }
-    });
-    
-  } catch (error) {
-    console.error('Signup error:', error);
-    res.status(500).json({ error: 'সাইনআপ ব্যর্থ হয়েছে' });
-  }
-});
-
-// 3. লগইন
-app.post('/api/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    
-    // ইউজার খুঁজুন
-    const user = users.find(u => u.email === email);
-    if (!user) {
-      return res.status(401).json({ error: 'ভুল ইমেইল বা পাসওয়ার্ড' });
-    }
-    
-    // পাসওয়ার্ড চেক
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
-      return res.status(401).json({ error: 'ভুল ইমেইল বা পাসওয়ার্ড' });
-    }
-    
-    // JWT টোকেন
-    const token = jwt.sign(
-      { userId: user.id, email: user.email },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-    
-    // পয়েন্ট আপডেট (ডেইলি লগইন বোনাস)
-    user.points += 2;
-    
-    // ব্যাজ চেক
-    if (user.points >= 50 && !user.badges.includes('🎬 Movie Explorer')) {
-      user.badges.push('🎬 Movie Explorer');
-    }
-    
-    res.json({
-      success: true,
-      message: 'লগইন সফল! 🎬',
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        avatar: user.avatar,
-        level: user.level,
-        points: user.points,
-        badges: user.badges,
-        unlockedAvatars: user.unlockedAvatars
-      }
-    });
-    
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'লগইন ব্যর্থ হয়েছে' });
-  }
-});
-
-// 4. ইউজার প্রোফাইল
-app.get('/api/user/:id', (req, res) => {
-  const user = users.find(u => u.id === req.params.id);
-  if (!user) {
-    return res.status(404).json({ error: 'ইউজার পাওয়া যায়নি' });
-  }
-  
-  // পাসওয়ার্ড সরান
-  const { password, ...userWithoutPassword } = user;
-  
-  res.json({
-    success: true,
-    user: userWithoutPassword
-  });
-});
-
-// 5. অ্যাভাটার লিস্ট
-app.get('/api/avatars/:userId', (req, res) => {
-  const user = users.find(u => u.id === req.params.userId);
-  if (!user) {
-    return res.status(404).json({ error: 'ইউজার পাওয়া যায়নি' });
-  }
-  
-  // ইউজারের লেভেল অনুযায়ী অ্যাভাটার ফিল্টার
-  const availableAvatars = avatarsDB.map(avatar => ({
-    ...avatar,
-    unlocked: user.unlockedAvatars.includes(avatar.id),
-    isCurrent: user.avatar === avatar.id
-  }));
-  
-  res.json({
-    success: true,
-    avatars: availableAvatars,
-    userLevel: user.level
-  });
-});
-
-// 6. অ্যাভাটার পরিবর্তন
-app.post('/api/avatar/update', (req, res) => {
-  try {
-    const { userId, avatarId } = req.body;
-    
-    const user = users.find(u => u.id === userId);
-    if (!user) {
-      return res.status(404).json({ error: 'ইউজার পাওয়া যায়নি' });
-    }
-    
-    // অ্যাভাটার আনলকড কিনা চেক
-    if (!user.unlockedAvatars.includes(avatarId)) {
-      return res.status(403).json({ error: 'এই অ্যাভাটার আপনার জন্য আনলকড নয়' });
-    }
-    
-    // অ্যাভাটার আপডেট
-    const selectedAvatar = avatarsDB.find(a => a.id === avatarId);
-    user.avatar = selectedAvatar.url;
-    
-    // পয়েন্ট যোগ (প্রথম বার অ্যাভাটার চেঞ্জ)
-    if (!user.avatarHistory) user.avatarHistory = [];
-    if (!user.avatarHistory.includes(avatarId)) {
-      user.points += 5;
-      user.avatarHistory.push(avatarId);
-    }
-    
-    res.json({
-      success: true,
-      message: 'অ্যাভাটার আপডেট হয়েছে! ✨',
-      newAvatar: selectedAvatar.url,
-      points: user.points
-    });
-    
-  } catch (error) {
-    console.error('Avatar update error:', error);
-    res.status(500).json({ error: 'অ্যাভাটার আপডেট ব্যর্থ হয়েছে' });
-  }
-});
-
-// 7. মুভি ডাউনলোড (পয়েন্ট যোগ)
-app.post('/api/download', (req, res) => {
-  try {
-    const { userId, movieId, movieTitle, quality } = req.body;
-    
-    const user = users.find(u => u.id === userId);
-    if (!user) {
-      return res.status(404).json({ error: 'ইউজার পাওয়া যায়নি' });
-    }
-    
-    // ডাউনলোড হিস্ট্রি যোগ
-    user.downloadHistory.push({
-      movieId,
-      movieTitle,
-      date: new Date(),
-      quality
-    });
-    
-    // পয়েন্ট যোগ
-    let pointsEarned = 10;
-    if (quality.includes('720')) pointsEarned = 15;
-    if (quality.includes('1080')) pointsEarned = 20;
-    
-    user.points += pointsEarned;
-    
-    // লেভেল আপ চেক
-    const newLevel = Math.floor(user.points / 50) + 1;
-    if (newLevel > user.level) {
-      user.level = newLevel;
-      
-      // নতুন অ্যাভাটার আনলক
-      const newAvatars = avatarsDB
-        .filter(a => a.level === newLevel)
-        .map(a => a.id);
-      
-      user.unlockedAvatars = [...user.unlockedAvatars, ...newAvatars];
-      
-      // নতুন ব্যাজ
-      const badgeMap = {
-        2: '🎥 Movie Lover',
-        3: '🎞️ Cinephile',
-        4: '🏆 Movie Master',
-        5: '👑 Cinema King'
-      };
-      
-      if (badgeMap[newLevel] && !user.badges.includes(badgeMap[newLevel])) {
-        user.badges.push(badgeMap[newLevel]);
-      }
-    }
-    
-    res.json({
-      success: true,
-      message: `ডাউনলোড সম্পূর্ণ! +${pointsEarned} পয়েন্ট`,
-      points: user.points,
-      level: user.level,
-      badges: user.badges,
-      unlockedAvatars: user.unlockedAvatars
-    });
-    
-  } catch (error) {
-    console.error('Download error:', error);
-    res.status(500).json({ error: 'ডাউনলোড ব্যর্থ হয়েছে' });
-  }
-});
-
-// 8. ফেভারিট যোগ
-app.post('/api/favorite', (req, res) => {
-  try {
-    const { userId, movieId } = req.body;
-    
-    const user = users.find(u => u.id === userId);
-    if (!user) {
-      return res.status(404).json({ error: 'ইউজার পাওয়া যায়নি' });
-    }
-    
-    // ফেভারিটে আছে কিনা চেক
-    const isFavorite = user.favorites.includes(movieId);
-    
-    if (isFavorite) {
-      // রিমুভ
-      user.favorites = user.favorites.filter(id => id !== movieId);
-      user.points -= 2;
+        // কিছু suggestions দিচ্ছি
+        const suggestions = [
+            `${username}123`,
+            `${username}_${Math.floor(Math.random() * 100)}`,
+            `The_${username}`,
+            `${username}${new Date().getFullYear()}`
+        ];
+        
+        res.json({
+            available: false,
+            suggestions: suggestions
+        });
     } else {
-      // যোগ
-      user.favorites.push(movieId);
-      user.points += 2;
+        res.json({
+            available: true,
+            suggestions: []
+        });
     }
-    
-    res.json({
-      success: true,
-      isFavorite: !isFavorite,
-      points: user.points,
-      favorites: user.favorites
-    });
-    
-  } catch (error) {
-    console.error('Favorite error:', error);
-    res.status(500).json({ error: 'ফেভারিট ব্যর্থ হয়েছে' });
-  }
 });
 
+// 3. সাইনআপ
+app.post('/api/signup', async (req, res) => {
+    try {
+        console.log('📝 Signup request received');
+        
+        const { username, email, password } = req.body;
+        
+        // Simple validation
+        if (!username || !email || !password) {
+            return res.status(400).json({ 
+                success: false,
+                error: 'All fields are required' 
+            });
+        }
+        
+        // Check if user exists
+        const existingUser = users.find(u => u.email === email);
+        if (existingUser) {
+            return res.status(400).json({ 
+                success: false,
+                error: 'Email already exists' 
+            });
+        }
+        
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
+        
+        // Create new user
+        const newUser = {
+            id: Date.now().toString(),
+            username,
+            email,
+            password: hashedPassword,
+            avatar: avatarsDB[0].url,
+            level: 1,
+            points: 0,
+            badges: ['🎬 Movie Explorer'],
+            unlockedAvatars: ['avatar1'],
+            favorites: [],
+            downloadHistory: [],
+            createdAt: new Date().toISOString()
+        };
+        
+        users.push(newUser);
+        
+        // Create token
+        const token = jwt.sign(
+            { userId: newUser.id, email: newUser.email },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+        
+        console.log('✅ User created:', newUser.username);
+        
+        res.json({
+            success: true,
+            message: 'Signup successful! 🎉',
+            token,
+            user: {
+                id: newUser.id,
+                username: newUser.username,
+                email: newUser.email,
+                avatar: newUser.avatar,
+                level: newUser.level,
+                points: newUser.points,
+                badges: newUser.badges,
+                unlockedAvatars: newUser.unlockedAvatars
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Signup error:', error);
+        res.status(500).json({ 
+            success: false,
+            error: 'Signup failed. Please try again.' 
+        });
+    }
+});
 
+// 4. লগইন
+app.post('/api/login', async (req, res) => {
+    try {
+        console.log('🔐 Login attempt:', req.body.email);
+        
+        const { email, password } = req.body;
+        
+        // Find user
+        const user = users.find(u => u.email === email);
+        if (!user) {
+            return res.status(401).json({ 
+                success: false,
+                error: 'Invalid email or password' 
+            });
+        }
+        
+        // Check password
+        const validPassword = await bcrypt.compare(password, user.password);
+        if (!validPassword) {
+            return res.status(401).json({ 
+                success: false,
+                error: 'Invalid email or password' 
+            });
+        }
+        
+        // Add points for daily login
+        user.points += 2;
+        
+        // Create token
+        const token = jwt.sign(
+            { userId: user.id, email: user.email },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+        
+        console.log('✅ Login successful:', user.username);
+        
+        res.json({
+            success: true,
+            message: 'Login successful! 🎬',
+            token,
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                avatar: user.avatar,
+                level: user.level,
+                points: user.points,
+                badges: user.badges,
+                unlockedAvatars: user.unlockedAvatars
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Login error:', error);
+        res.status(500).json({ 
+            success: false,
+            error: 'Login failed. Please try again.' 
+        });
+    }
+});
 
+// 5. Get user by ID
+app.get('/api/user/:id', (req, res) => {
+    const user = users.find(u => u.id === req.params.id);
+    
+    if (!user) {
+        return res.status(404).json({ 
+            success: false,
+            error: 'User not found' 
+        });
+    }
+    
+    // Remove password from response
+    const { password, ...userWithoutPassword } = user;
+    
+    res.json({
+        success: true,
+        user: userWithoutPassword
+    });
+});
 
-// ✅ CORS Pre-Flight Requests
-app.options('*', cors());
+// 6. Get current user (by token)
+app.get('/api/user/current', (req, res) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        
+        if (!token) {
+            return res.status(401).json({ 
+                success: false,
+                error: 'No token provided' 
+            });
+        }
+        
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const user = users.find(u => u.id === decoded.userId);
+        
+        if (!user) {
+            return res.status(404).json({ 
+                success: false,
+                error: 'User not found' 
+            });
+        }
+        
+        // Remove password from response
+        const { password, ...userWithoutPassword } = user;
+        
+        res.json({
+            success: true,
+            user: userWithoutPassword
+        });
+        
+    } catch (error) {
+        console.error('❌ Token error:', error);
+        res.status(401).json({ 
+            success: false,
+            error: 'Invalid token' 
+        });
+    }
+});
 
-// ✅ সরাসরি Render রুট
+// 7. Root endpoint
 app.get('/', (req, res) => {
     res.json({
         service: 'Movie Bazar Login API',
-        status: '✅ Live',
-        cors: 'Enabled for: ' + (process.env.ALLOWED_ORIGINS || 'mbbd2.blogspot.com')
+        status: '✅ Live and Running',
+        endpoints: {
+            health: '/api/health',
+            signup: '/api/signup (POST)',
+            login: '/api/login (POST)',
+            checkUsername: '/api/check-username/:username'
+        },
+        cors: 'Enabled for all origins'
     });
 });
+
+// 404 handler
+app.use((req, res) => {
+    res.status(404).json({
+        success: false,
+        error: 'Endpoint not found',
+        path: req.path
+    });
+});
+
+// Error handler
+app.use((err, req, res, next) => {
+    console.error('🔥 Server error:', err);
+    res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+});
+
 // ==================== সার্ভার শুরু ====================
 app.listen(PORT, () => {
-  console.log(`✅ Movie Bazar API running on http://localhost:${PORT}`);
-  console.log(`📡 Test UI: http://localhost:${PORT}/test-ui`);
-
+    console.log(`✅ Movie Bazar API running on port ${PORT}`);
+    console.log(`🌐 Health check: http://localhost:${PORT}/api/health`);
+    console.log(`📡 Test URL: http://localhost:${PORT}/`);
 });
