@@ -38,11 +38,102 @@ app.use(express.urlencoded({ extended: true }));
 
 // ✅ TEMPORARY DATABASE (মেমোরিতে)
 let users = [];
-let avatarsDB = [
-    { id: 'avatar1', url: 'https://i.gifer.com/embedded/download/7VE.gif', level: 1 },
-    { id: 'avatar2', url: 'https://i.pinimg.com/originals/2c/9b/7c/2c9b7c6092f8db8c90225eb29c2a8a2d.gif', level: 2 },
-    { id: 'avatar3', url: 'https://media.tenor.com/4tHnQM3X7c8AAAAM/anime-smile.gif', level: 3 }
+// ✅ নতুন লেভেল সিস্টেম (পুরানো avatarsDB এর জায়গায় এটা বসান)
+const levels = [
+    {
+        level: 1,
+        name: "🎬 Novice Explorer",
+        pointsNeeded: 0,
+        description: "Just starting your movie journey",
+        avatars: [
+            'https://i.ibb.co.com/twmPncy7/photo-2026-01-25-00-02-27.jpg',
+            'https://i.ibb.co.com/qMQxrpKK/photo-2026-01-25-00-02-29.jpg',
+            'https://i.ibb.co.com/84PSC5hp/photo-2026-01-25-00-02-30.jpg',
+            'https://i.ibb.co.com/XxHLvYYG/photo-2026-01-25-00-02-32.jpg',
+            'https://i.ibb.co.com/qYc1jNy4/photo-2026-01-25-00-02-37.jpg',
+            'https://i.ibb.co.com/84Y5QBf0/photo-2026-01-25-00-02-39.jpg'
+        ]
+    },
+    {
+        level: 2,
+        name: "🎥 Movie Enthusiast",
+        pointsNeeded: 200,
+        description: "Building your movie collection",
+        avatars: [
+            'https://i.ibb.co.com/Y4CdXcP2/photo-2026-01-25-00-02-52.jpg',
+            'https://i.ibb.co.com/bjn3MyhB/photo-2026-01-25-00-03-04.jpg',
+            'https://i.ibb.co.com/C3f4kzqC/photo-2026-01-25-00-03-09.jpg',
+            'https://i.ibb.co.com/BKGTg1HV/photo-2026-01-25-00-03-16.jpg',
+            'https://i.ibb.co.com/F46FQ47d/photo-2026-01-25-00-03-19.jpg',
+            'https://i.ibb.co.com/fd5r0KDn/photo-2026-01-25-00-03-21.jpg',
+            'https://i.ibb.co.com/KjgKBYXx/photo-2026-01-25-00-03-23.jpg'
+        ]
+    },
+    {
+        level: 3,
+        name: "🏆 Cinema Expert",
+        pointsNeeded: 450,
+        description: "You know your movies well",
+        avatars: [
+            'https://i.ibb.co.com/v4J1ZVMH/photo-2026-01-25-00-02-57.jpg',
+            'https://i.ibb.co.com/WW004nwd/photo-2026-01-25-00-02-58.jpg',
+            'https://i.ibb.co.com/HfmTx4JV/photo-2026-01-25-00-03-07.jpg',
+            'https://i.ibb.co.com/BV5hsvFP/photo-2026-01-25-00-03-11.jpg',
+            'https://i.ibb.co.com/fdyF8SVz/photo-2026-01-25-00-03-13.jpg',
+            'https://i.ibb.co.com/60RPhKbN/photo-2026-01-25-00-03-14.jpg'
+        ]
+    },
+    {
+        level: 4,
+        name: "👑 Film Master",
+        pointsNeeded: 700,
+        description: "Master of all cinema genres",
+        avatars: [
+            'https://i.ibb.co.com/Y7q2NYxJ/photo-2026-01-25-00-02-40.jpg',
+            'https://i.ibb.co.com/zT15XGRQ/photo-2026-01-25-00-02-42.jpg',
+            'https://i.ibb.co.com/xKBYY7FJ/photo-2026-01-25-00-02-44.jpg',
+            'https://i.ibb.co.com/VcDW7np0/photo-2026-01-25-00-02-47.jpg',
+            'https://i.ibb.co.com/S79RnZs7/photo-2026-01-25-00-02-50.jpg',
+            'https://i.ibb.co.com/zTCNG9Yt/photo-2026-01-25-00-02-53.jpg',
+            'https://i.ibb.co.com/qFL3PWgh/photo-2026-01-25-00-02-55.jpg',
+            'https://i.ibb.co.com/kVdntYyS/photo-2026-01-25-00-03-01.jpg'
+        ]
+    }
 ];
+
+// ✅ লেভেল চেক করার ফাংশন
+function getUserLevel(points) {
+    for (let i = levels.length - 1; i >= 0; i--) {
+        if (points >= levels[i].pointsNeeded) {
+            return levels[i];
+        }
+    }
+    return levels[0];
+}
+
+// ✅ আনলক করা অ্যাভাটার দেখার ফাংশন
+function getUnlockedAvatars(points) {
+    const userLevel = getUserLevel(points);
+    const unlocked = [];
+    
+    for (let level of levels) {
+        if (points >= level.pointsNeeded) {
+            unlocked.push(...level.avatars);
+        }
+    }
+    
+    const nextLevel = levels.find(l => l.pointsNeeded > userLevel.pointsNeeded);
+    const progress = nextLevel 
+        ? ((points - userLevel.pointsNeeded) / (nextLevel.pointsNeeded - userLevel.pointsNeeded)) * 100
+        : 100;
+    
+    return {
+        currentLevel: userLevel,
+        unlockedAvatars: unlocked,
+        nextLevel: nextLevel,
+        progress: progress
+    };
+}
 
 // ==================== API ENDPOINTS ====================
 
@@ -299,6 +390,42 @@ app.get('/', (req, res) => {
     });
 });
 
+// ✅ নতুন API ১: সব লেভেলের তথ্য দেখাবে
+app.get('/api/levels', (req, res) => {
+    res.json({
+        success: true,
+        levels: levels,
+        maxLevelPoints: 1000
+    });
+});
+
+// ✅ নতুন API ২: ইউজারের লেভেল প্রগ্রেস দেখাবে
+app.get('/api/user/level-progress', (req, res) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        if (!token) throw new Error('No token');
+        
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const user = users.find(u => u.id === decoded.userId);
+        
+        if (!user) throw new Error('User not found');
+        
+        const levelInfo = getUnlockedAvatars(user.points);
+        
+        res.json({
+            success: true,
+            currentLevel: levelInfo.currentLevel,
+            unlockedAvatars: levelInfo.unlockedAvatars,
+            nextLevel: levelInfo.nextLevel,
+            progress: levelInfo.progress,
+            totalPoints: user.points
+        });
+        
+    } catch (error) {
+        res.status(401).json({ success: false, error: error.message });
+    }
+});
+
 // 404 handler
 app.use((req, res) => {
     res.status(404).json({
@@ -324,3 +451,4 @@ app.listen(PORT, () => {
     console.log(`🌐 Health check: http://localhost:${PORT}/api/health`);
     console.log(`📡 Test URL: http://localhost:${PORT}/`);
 });
+
